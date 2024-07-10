@@ -16,8 +16,7 @@ Welcome to the Library Management System! This application allows you to manage 
 
 1. Clone the repository:
     ```sh
-    git clone https://github.com/your-username/library-management-system.git
-    cd library-management-system
+    https://github.com/Morashastern/mors_library.git
     ```
 
 2. Create a virtual environment:
