@@ -1,0 +1,293 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Add New Book</title>
+    <script src="https://unpkg.com/axios@1.6.7/dist/axios.min.js"></script>
+    
+    <link rel="stylesheet" href="/css/styles.css">
+    <style>
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1;
+            padding-top: 100px;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            overflow: auto;
+            background-color: rgb(0,0,0);
+            background-color: rgba(0,0,0,0.4);
+        }
+
+        .modal-content {
+            background-color: #fefefe;
+            margin: auto;
+            padding: 20px;
+            border: 1px solid #888;
+            width: 80%;
+        }
+
+        .close {
+            color: #aaa;
+            float: right;
+            font-size: 28px;
+            font-weight: bold;
+        }
+
+        .close:hover,
+        .close:focus {
+            color: black;
+            text-decoration: none;
+            cursor: pointer;
+        }
+    </style>
+</head>
+
+<body>
+    <header id="header-placeholder"></header>
+
+    <div id="feedback"></div>
+    <h1>Add New Book</h1>
+    <form id="bookForm" enctype="multipart/form-data">
+        <label for="bookName">Book Name:</label>
+        <input type="text" id="bookName" name="bookName" placeholder="Enter book name" required><br><br>
+
+        <label for="author">Author:</label>
+        <input type="text" id="author" name="author" placeholder="Enter author's name" required><br><br>
+
+        <label for="yearPublished">Year Published:</label>
+        <input type="number" id="yearPublished" name="yearPublished" placeholder="Enter year published"
+            required><br><br>
+
+        <label for="bookType">Book Type:</label>
+        <select id="bookType" name="bookType" required>
+            <option value="1">10 Days</option>
+            <option value="2">15 Days</option>
+            <option value="3">20 Days</option>
+        </select><br><br>
+
+        <label for="bookStatus">Book Status:</label>
+        <input type="checkbox" id="bookStatus" name="bookStatus"><br><br>
+
+        <label for="fileInput">Upload File:</label>
+        <input type="file" id="fileInput" name="file" title="Choose a file to upload" required><br><br>
+
+        <button type="button" onclick="uploadFile()">Submit</button>
+    </form>
+
+    
+
+    <div id="updateModal" class="modal">
+        <div class="modal-content">
+            <span class="close" onclick="closeModal()">&times;</span>
+            <h2>Update Book</h2>
+            <form id="updateForm">
+                <label for="updateBookName">Book Name:</label>
+                <input type="text" id="updateBookName" name="updateBookName" required><br><br>
+
+                <label for="updateAuthor">Author:</label>
+                <input type="text" id="updateAuthor" name="updateAuthor" required><br><br>
+
+                <label for="updateYearPublished">Year Published:</label>
+                <input type="number" id="updateYearPublished" name="updateYearPublished" required><br><br>
+
+                <label for="updateBookType">Book Type:</label>
+                <select id="updateBookType" name="updateBookType" required>
+                    <option value="1">10 Days</option>
+                    <option value="2">15 Days</option>
+                    <option value="3">20 Days</option>
+                </select><br><br>
+
+                <label for="updateBookStatus">Book Status:</label>
+                <input type="checkbox" id="updateBookStatus" name="updateBookStatus"><br><br>
+
+                <label for="updateFileInput">Upload File (optional):</label>
+                <input type="file" id="updateFileInput" name="updateFileInput"><br><br>
+
+                <button type="button" onclick="submitUpdate()">Update</button>
+                <button type="button" onclick="closeModal()">Cancel</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Display all images -->
+    <div id="bookContainer">
+        <!-- Images will be displayed here -->
+    </div>
+
+    <script>
+        const SERVER = 'http://127.0.0.1:5000';
+
+        const uploadFile = () => {
+            const bookName = document.getElementById('bookName').value;
+            const author = document.getElementById('author').value;
+            const yearPublished = document.getElementById('yearPublished').value;
+            const bookType = document.getElementById('bookType').value;
+            const bookStatus = document.getElementById('bookStatus').checked ? '1' : '0';
+            const fileInput = document.getElementById('fileInput');
+            const file = fileInput.files[0];
+            const formData = new FormData();
+
+            formData.append('bookName', bookName);
+            formData.append('author', author);
+            formData.append('yearPublished', yearPublished);
+            formData.append('bookType', bookType);
+            formData.append('bookStatus', bookStatus);
+            formData.append('file', file);
+
+            const feedback = document.getElementById('feedback');
+            feedback.innerText = formData.data;
+
+            axios.post(SERVER + '/new_book', formData, {
+                headers: {
+                    'Content-Type': 'multipart/form-data'
+                }
+            })
+                .then(response => {
+                    feedback.innerText = 'File uploaded successfully!';
+                    console.log('File uploaded successfully:', response);
+                    fetchImages();
+                })
+                .catch(error => {
+                    feedback.innerText = 'Error uploading file. Please try again.';
+                    console.error('Error uploading file:', error);
+                });
+        }
+
+        const fetchBooks = async() => {
+            const response=await axios.get(SERVER + '/get_books')
+                .then(response => {
+                const bookContainer = document.getElementById('bookContainer');
+                bookContainer.innerHTML = ''; // Clear previous books
+                response.data.forEach(book => {
+                    console.log(book);
+
+                    const bookElement = document.createElement('div');
+                    bookElement.className = 'book';
+
+                        const bookNameElement = document.createElement('p');
+                        const authorElement = document.createElement('p');
+                        const yearPublishedElement = document.createElement('p');
+                        const bookTypeElement = document.createElement('p');
+                        const bookStatusElement = document.createElement('p');
+                        const imgElement = document.createElement('img');
+                        const deleteButton = document.createElement('button');
+                        const updateButton = document.createElement('button');
+
+
+                        bookNameElement.textContent = `Book Name: ${book.bookName}`;
+                        authorElement.textContent = `Author: ${book.Author}`;
+                        yearPublishedElement.textContent = `Year Published: ${book.YearPublished}`;
+                        bookTypeElement.textContent = `Book Type: ${book.BookType}`;
+                        bookStatusElement.textContent = `Book Status: ${book.BookStatus ? 'Available' : 'Unavailable'}`;
+                        imgElement.src = `${SERVER}/${book.filePath}`;
+                        console.log(book.filePath);
+                        imgElement.alt = `${book.bookName}'s Image`;
+                        imgElement.style.maxWidth = '100%';
+                        deleteButton.textContent = 'Delete';
+                        deleteButton.onclick = () => deleteBook(book.id);
+                        updateButton.textContent = 'Update';
+                        updateButton.onclick = () => updateBook(book);
+
+                        bookContainer.appendChild(bookNameElement);
+                        bookContainer.appendChild(authorElement);
+                        bookContainer.appendChild(yearPublishedElement);
+                        bookContainer.appendChild(bookTypeElement);
+                        bookContainer.appendChild(bookStatusElement);
+                        bookContainer.appendChild(imgElement);
+                        bookElement.appendChild(deleteButton);
+                        bookElement.appendChild(updateButton);
+                        bookContainer.appendChild(bookElement);
+                    });
+                })
+                .catch(error => console.error('Error fetching books:', error));
+        }
+
+
+        const updateBook = (book) => {
+            currentBookId = book.id;
+            document.getElementById('updateBookName').value = book.bookName;
+            document.getElementById('updateAuthor').value = book.Author;
+            document.getElementById('updateYearPublished').value = book.YearPublished;
+            document.getElementById('updateBookType').value = book.BookType;
+            document.getElementById('updateBookStatus').checked = book.BookStatus;
+            document.getElementById('updateModal').style.display = 'block';
+        }
+
+        const submitUpdate = async () => {
+            const bookName = document.getElementById('updateBookName').value;
+            const author = document.getElementById('updateAuthor').value;
+            const yearPublished = document.getElementById('updateYearPublished').value;
+            const bookType = document.getElementById('updateBookType').value;
+            const bookStatus = document.getElementById('updateBookStatus').checked ? '1' : '0';
+            const fileInput = document.getElementById('updateFileInput');
+            const file = fileInput.files[0];
+            const formData = new FormData();
+
+            formData.append('bookName', bookName);
+            formData.append('author', author);
+            formData.append('yearPublished', yearPublished);
+            formData.append('bookType', bookType);
+            formData.append('bookStatus', bookStatus);
+            if (file) {
+                formData.append('file', file);
+            }
+
+            const feedback = document.getElementById('feedback');
+            feedback.innerText = "Updating...";
+
+            try {
+                await axios.put(`${SERVER}/upt_books/${currentBookId}`, formData, {
+                    headers: {
+                        'Content-Type': 'multipart/form-data'
+                    }
+                });
+                feedback.innerText = 'Book updated successfully!';
+                fetchBooks();
+                closeModal();
+            } catch (error) {
+                feedback.innerText = 'Error updating book. Please try again.';
+            }
+        }
+
+        const closeModal = () => {
+            document.getElementById('updateModal').style.display = 'none';
+            currentBookId = null;
+        }
+
+
+        const resetForm = () => {
+            document.getElementById('bookForm').reset();
+            const uploadButton = document.querySelector('button[onclick="submitUpdate()"]');
+            uploadButton.textContent = 'Submit';
+            uploadButton.onclick = uploadFile;
+        }
+
+        const deleteBook = (id) => {
+            axios.delete(`${SERVER}/del_book/${id}`)
+            .then(response => {
+                console.log('Book deleted successfully:', response);
+                fetchBooks();
+            })
+            .catch(error => console.error('Error deleting book:', error));
+        }
+
+        window.onload = fetchBooks;
+    </script>
+        <footer id="footer-placeholder"></footer>
+        <script src="load-components.js"></script>
+
+
+</body>
+
+</html>
+
+
+</script>
+</body>
+
+</html>

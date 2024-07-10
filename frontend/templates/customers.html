@@ -1,0 +1,217 @@
+
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Manage Customers</title>
+    <script src="https://unpkg.com/axios@1.6.7/dist/axios.min.js"></script>
+    <link rel="stylesheet" href="/css/styles.css">
+   <style>
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1;
+            padding-top: 100px;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            overflow: auto;
+            background-color: rgb(0, 0, 0);
+            background-color: rgba(0, 0, 0, 0.4);
+        }
+
+        .modal-content {
+            background-color: #fefefe;
+            margin: auto;
+            padding: 20px;
+            border: 1px solid #888;
+            width: 80%;
+        }
+
+        .close {
+            color: #aaa;
+            float: right;
+            font-size: 28px;
+            font-weight: bold;
+        }
+
+        .close:hover,
+        .close:focus {
+            color: black;
+            text-decoration: none;
+            cursor: pointer;
+        }
+    </style>
+</head>
+
+<body>
+    <header id="header-placeholder"></header>
+
+    <div id="feedback"></div>
+    <h1>Add Customers</h1>
+    <form id="customerForm">
+        <label for="customerName">Customer Name:</label>
+        <input type="text" id="customerName" name="customerName" placeholder="Enter customer name" required><br><br>
+
+        <label for="City">City:</label>
+        <input type="text" id="City" name="City" placeholder="Enter city" required><br><br>
+
+        <label for="Age">Age:</label>
+        <input type="number" id="Age" name="Age" placeholder="Enter age" required><br><br>
+
+        <label for="customerstatus">Customer Status:</label>
+        <input type="checkbox" id="customerstatus" name="customerstatus"><br><br>
+
+        <button type="button" onclick="addCustomer()">Submit</button>
+    </form>
+
+    <div id="updateModal" class="modal">
+        <div class="modal-content">
+            <span class="close" onclick="closeModal()">&times;</span>
+            <h2>Update Customer</h2>
+            <form id="updateForm">
+                <label for="updateCustomerName">Customer Name:</label>
+                <input type="text" id="updateCustomerName" name="updateCustomerName" required><br><br>
+
+                <label for="updateCity">City:</label>
+                <input type="text" id="updateCity" name="updateCity" required><br><br>
+
+                <label for="updateAge">Age:</label>
+                <input type="number" id="updateAge" name="updateAge" required><br><br>
+
+                <label for="updateCustomerStatus">Customer Status:</label>
+                <input type="checkbox" id="updateCustomerStatus" name="updateCustomerStatus"><br><br>
+
+                <button type="button" onclick="submitUpdate()">Update</button>
+                <button type="button" onclick="closeModal()">Cancel</button>
+            </form>
+        </div>
+    </div>
+<br>
+    <!-- Display all customers -->
+    <div id="customerContainer">
+        <!-- Customers will be displayed here -->
+    </div>
+
+    <script>
+        const SERVER = 'http://127.0.0.1:5000';
+        let currentCustomerId = null;
+
+        const addCustomer = () => {
+            const customerName = document.getElementById('customerName').value;
+            const City = document.getElementById('City').value;
+            const Age = document.getElementById('Age').value;
+            const customerstatus = document.getElementById('customerstatus').checked ? '1' : '0';
+            const formData = {
+                customerName: customerName,
+                City: City,
+                Age: Age,
+                customerstatus: customerstatus
+            };
+
+            axios.post(SERVER + '/new_customer', formData)
+                .then(response => {
+                    document.getElementById('feedback').innerText = 'Customer added successfully!';
+                    fetchCustomers();
+                })
+                .catch(error => {
+                    document.getElementById('feedback').innerText = 'Error adding customer. Please try again.';
+                    console.error('Error adding customer:', error);
+                });
+        };
+
+        const fetchCustomers = () => {
+            axios.get(SERVER + '/get_customers')
+                .then(response => {
+                    const customerContainer = document.getElementById('customerContainer');
+                    customerContainer.innerHTML = ''; // Clear previous customers
+                    response.data.forEach(customer => {
+                        const customerElement = document.createElement('div');
+                        customerElement.className = 'customer';
+
+                        const customerNameElement = document.createElement('p');
+                        const CityElement = document.createElement('p');
+                        const AgeElement = document.createElement('p');
+                        const customerstatusElement = document.createElement('p');
+                        const deleteButton = document.createElement('button');
+                        const updateButton = document.createElement('button');
+
+                        customerNameElement.textContent = `Customer Name: ${customer.customerName}`;
+                        CityElement.textContent = `City: ${customer.City}`;
+                        AgeElement.textContent = `Age: ${customer.Age}`;
+                        customerstatusElement.textContent = `Customer Status: ${customer.customerstatus ? 'Active' : 'Inactive'}`;
+                        deleteButton.textContent = 'Deactivate';
+                        deleteButton.onclick = () => deactivateCustomer(customer.id);
+                        updateButton.textContent = 'Update';
+                        updateButton.onclick = () => updateCustomer(customer);
+
+                        customerElement.appendChild(customerNameElement);
+                        customerElement.appendChild(CityElement);
+                        customerElement.appendChild(AgeElement);
+                        customerElement.appendChild(customerstatusElement);
+                        customerElement.appendChild(deleteButton);
+                        customerElement.appendChild(updateButton);
+                        customerContainer.appendChild(customerElement);
+                    });
+                })
+                .catch(error => console.error('Error fetching customers:', error));
+        };
+
+        const updateCustomer = (customer) => {
+            currentCustomerId = customer.id;
+            document.getElementById('updateCustomerName').value = customer.customerName;
+            document.getElementById('updateCity').value = customer.City;
+            document.getElementById('updateAge').value = customer.Age;
+            document.getElementById('updateCustomerStatus').checked = customer.customerstatus;
+            document.getElementById('updateModal').style.display = 'block';
+        };
+
+        const submitUpdate = () => {
+            const customerName = document.getElementById('updateCustomerName').value;
+            const City = document.getElementById('updateCity').value;
+            const Age = document.getElementById('updateAge').value;
+            const customerstatus = document.getElementById('updateCustomerStatus').checked ? '1' : '0';
+            const formData = {
+                customerName: customerName,
+                City: City,
+                Age: Age,
+                customerstatus: customerstatus
+            };
+
+            axios.put(`${SERVER}/upt_customer/${currentCustomerId}`, formData)
+                .then(response => {
+                    document.getElementById('feedback').innerText = 'Customer updated successfully!';
+                    fetchCustomers();
+                    closeModal();
+                })
+                .catch(error => {
+                    document.getElementById('feedback').innerText = 'Error updating customer. Please try again.';
+                    console.error('Error updating customer:', error);
+                });
+        };
+
+        const closeModal = () => {
+            document.getElementById('updateModal').style.display = 'none';
+            currentCustomerId = null;
+        };
+
+        const deactivateCustomer = (id) => {
+            axios.put(`${SERVER}/del_customer/${id}`)
+                .then(response => {
+                    console.log('Customer deactivated successfully:', response);
+                    fetchCustomers();
+                })
+                .catch(error => console.error('Error deactivating customer:', error));
+        };
+
+        window.onload = fetchCustomers;
+    </script>
+     <footer id="footer-placeholder"></footer>
+     <script src="load-components.js"></script>
+
+</body>
+
+</html>

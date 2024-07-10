@@ -1,0 +1,324 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Manage Loans</title>
+    <link rel="stylesheet" href="/css/styles.css">
+
+    <script src="https://unpkg.com/axios/dist/axios.min.js"></script>
+
+   
+</head>
+
+<body>
+    <header id="header-placeholder"></header>
+
+    <div id="feedback"></div>
+    <br>
+    <h1>Manage Loans</h1>
+    <br>
+<hr >
+    <!-- Add Loan Form -->
+     <br>
+    <h2>Add New Loan</h2><hr>
+    <form id="loanForm">
+        <label for="bookName">Book Name:</label>
+        <input type="text" id="bookName" name="bookName" placeholder="Enter book name" oninput="filterBooks()">
+        <select id="bookSelect" name="bookSelect"  onchange="selectBook()">
+            <option value=""> our books</option>
+        </select>
+        <input type="hidden" id="BookID" name="BookID">
+        <!-- <input type="text" id="selectedBook" name="selectedBook" readonly><br><br> -->
+
+        <label for="customerName">Customer Name:</label>
+        <input type="text" id="customerName" name="customerName" placeholder="Enter customer name" oninput="filterCustomers()">
+        <select id="customerSelect" name="customerSelect" onchange="selectCustomer()">
+            <option value="">Select customer</option>
+        </select>
+        <input type="hidden" id="CustID" name="CustID">
+        <!-- <input type="text" id="selectedCustomer" name="selectedCustomer" readonly><br><br> -->
+
+        <label for="LoanDate">Loan Date:</label>
+        <input type="date" id="LoanDate" name="LoanDate" required><br><br>
+
+        <button type="button" onclick="addLoan()">Submit</button>
+    </form>
+
+    <!-- Update Loan Modal -->
+    <div id="updateModal" class="modal">
+        <div class="modal-content">
+            <span class="close" onclick="closeModal()">&times;</span>
+            <h2>Update Loan</h2>
+            <form id="updateForm">
+                <label for="updateCustID">Customer ID:</label>
+                <input type="number" id="updateCustID" name="updateCustID" required><br><br>
+
+                <label for="updateBookID">Book ID:</label>
+                <input type="number" id="updateBookID" name="updateBookID" required><br><br>
+
+                <label for="updateLoanDate">Loan Date:</label>
+                <input type="date" id="updateLoanDate" name="updateLoanDate" required><br><br>
+
+                <label for="updateReturnDate">Return Date:</label>
+                <input type="date" id="updateReturnDate" name="updateReturnDate" required><br><br>
+
+                <button type="button" onclick="submitUpdate()">Update</button>
+                <button type="button" onclick="closeModal()">Cancel</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Display all loans -->
+    <h2>All Loans</h2>
+    <div id="loanContainer"></div>
+
+    <!-- Display late loans -->
+    <h2>Late Loans</h2>
+    <div id="lateLoanContainer"></div>
+
+    <script>
+        const SERVER = 'http://127.0.0.1:5000';
+        let currentLoanId = null;
+        let allBooks = [];
+        let allCustomers = [];
+
+        const addLoan = () => {
+            const CustID = document.getElementById('CustID').value;
+            const BookID = document.getElementById('BookID').value;
+            const LoanDate = document.getElementById('LoanDate').value;
+            const formData = {
+                CustID: CustID,
+                BookID: BookID,
+                LoanDate: LoanDate,
+            };
+
+            const feedback = document.getElementById('feedback');
+            feedback.innerText = 'Adding loan...';
+
+            axios.post(SERVER + '/new_loan', formData)
+                .then(response => {
+                    feedback.innerText = 'Loan added successfully!';
+                    fetchLoans();
+                })
+                .catch(error => {
+                    feedback.innerText = 'Error adding loan. Please try again.';
+                    console.error('Error adding loan:', error);
+                });
+        }
+
+        const fetchLoans = async () => {
+            try {
+                const response = await axios.get(SERVER + '/get_loans_details');
+                const loanContainer = document.getElementById('loanContainer');
+                loanContainer.innerHTML = ''; // Clear previous loans
+
+                response.data.forEach(loan => {
+                    const loanElement = document.createElement('div');
+                    loanElement.className = 'loan';
+
+                    const customerNameElement = document.createElement('p');
+                    const bookNameElement = document.createElement('p');
+                    const loanDateElement = document.createElement('p');
+                    const returnDateElement = document.createElement('p');
+                    const loanStatusElement = document.createElement('p');
+                    const deleteButton = document.createElement('button');
+                    const updateButton = document.createElement('button');
+                    const returnButton = document.createElement('button');
+
+                    customerNameElement.textContent = `Customer Name: ${loan.customerName}`;
+                    bookNameElement.textContent = `Book Name: ${loan.bookName}`;
+                    loanDateElement.textContent = `Loan Date: ${loan.LoanDate}`;
+                    returnDateElement.textContent = `Return Date: ${loan.ReturnDate}`;
+                    loanStatusElement.textContent = `Loan Status: ${loan.LoanStatus}`;
+
+                    deleteButton.textContent = 'Delete';
+                    deleteButton.onclick = () => deleteLoan(loan.id);
+                    updateButton.textContent = 'Update';
+                    updateButton.onclick = () => updateLoan(loan);
+                    returnButton.textContent = 'Return';
+                    returnButton.onclick = () => returnLoan(loan.id);
+
+                    loanElement.appendChild(customerNameElement);
+                    loanElement.appendChild(bookNameElement);
+                    loanElement.appendChild(loanDateElement);
+                    loanElement.appendChild(returnDateElement);
+                    loanElement.appendChild(loanStatusElement);
+                    loanElement.appendChild(deleteButton);
+                    loanElement.appendChild(updateButton);
+                    loanElement.appendChild(returnButton);
+                    loanContainer.appendChild(loanElement);
+                });
+            } catch (error) {
+                console.error('Error fetching loans:', error);
+            }
+        }
+
+        const fetchLateLoans = async () => {
+            try {
+                const response = await axios.get(SERVER + '/late_loans_details');
+                const lateLoanContainer = document.getElementById('lateLoanContainer');
+                lateLoanContainer.innerHTML = ''; // Clear previous late loans
+
+                response.data.forEach(loan => {
+                    const loanElement = document.createElement('div');
+                    loanElement.className = 'loan late';
+
+                    const customerNameElement = document.createElement('p');
+                    const bookNameElement = document.createElement('p');
+                    const loanDateElement = document.createElement('p');
+                    const returnDateElement = document.createElement('p');
+                    const loanStatusElement = document.createElement('p');
+                    const returnButton = document.createElement('button');
+
+                    customerNameElement.textContent = `Customer Name: ${loan.customerName}`;
+                    bookNameElement.textContent = `Book Name: ${loan.bookName}`;
+                    loanDateElement.textContent = `Loan Date: ${loan.LoanDate}`;
+                    returnDateElement.textContent = `Return Date: ${loan.ReturnDate}`;
+                    loanStatusElement.textContent = `Loan Status: ${loan.LoanStatus}`;
+
+                    returnButton.textContent = 'Return';
+                    returnButton.onclick = () => returnLoan(loan.id);
+
+                    loanElement.appendChild(customerNameElement);
+                    loanElement.appendChild(bookNameElement);
+                    loanElement.appendChild(loanDateElement);
+                    loanElement.appendChild(returnDateElement);
+                    loanElement.appendChild(loanStatusElement);
+                    loanElement.appendChild(returnButton);
+                    lateLoanContainer.appendChild(loanElement);
+                });
+            } catch (error) {
+                console.error('Error fetching late loans:', error);
+            }
+        }
+
+        const updateLoan = (loan) => {
+            currentLoanId = loan.id;
+            document.getElementById('updateCustID').value = loan.CustID;
+            document.getElementById('updateBookID').value = loan.BookID;
+            document.getElementById('updateLoanDate').value = loan.LoanDate.split('T')[0];
+            document.getElementById('updateReturnDate').value = loan.ReturnDate.split('T')[0];
+            document.getElementById('updateModal').style.display = 'block';
+        }
+
+        const submitUpdate = async () => {
+            const CustID = document.getElementById('updateCustID').value;
+            const BookID = document.getElementById('updateBookID').value;
+            const LoanDate = document.getElementById('updateLoanDate').value;
+            const ReturnDate = document.getElementById('updateReturnDate').value;
+
+            const formData = {
+                CustID: CustID,
+                BookID: BookID,
+                LoanDate: LoanDate,
+                ReturnDate: ReturnDate
+            };
+
+            try {
+                await axios.put(SERVER + `/upt_loan/${currentLoanId}`, formData);
+                document.getElementById('updateModal').style.display = 'none';
+                fetchLoans();
+            } catch (error) {
+                console.error('Error updating loan:', error);
+            }
+        }
+
+        const deleteLoan = async (loanId) => {
+            try {
+                await axios.delete(SERVER + `/del_loan/${loanId}`);
+                fetchLoans();
+            } catch (error) {
+                console.error('Error deleting loan:', error);
+            }
+        }
+
+        const returnLoan = async (loanId) => {
+            try {
+                await axios.put(SERVER + `/return_loan/${loanId}`);
+                fetchLoans();
+                fetchLateLoans();
+            } catch (error) {
+                console.error('Error returning loan:', error);
+            }
+        }
+
+        const filterBooks = () => {
+            const bookName = document.getElementById('bookName').value.toLowerCase();
+            const bookSelect = document.getElementById('bookSelect');
+            bookSelect.innerHTML = '<option value="">Select book</option>';
+
+            allBooks.filter(book => book.bookName.toLowerCase().includes(bookName)).forEach(book => {
+                const option = document.createElement('option');
+                option.value = book.id;
+                option.textContent = book.bookName;
+                bookSelect.appendChild(option);
+            });
+        }
+
+        const filterCustomers = () => {
+            const customerName = document.getElementById('customerName').value.toLowerCase();
+            const customerSelect = document.getElementById('customerSelect');
+            customerSelect.innerHTML = '<option value="">Select customer</option>';
+
+            allCustomers.filter(customer => customer.customerName.toLowerCase().includes(customerName)).forEach(customer => {
+                const option = document.createElement('option');
+                option.value = customer.id;
+                option.textContent = customer.customerName;
+                customerSelect.appendChild(option);
+            });
+        }
+
+        const fetchAllBooks = async () => {
+            try {
+                const response = await axios.get(SERVER + '/get_books');
+                allBooks = response.data;
+                filterBooks();
+            } catch (error) {
+                console.error('Error fetching books:', error);
+            }
+        }
+
+        const fetchAllCustomers = async () => {
+            try {
+                const response = await axios.get(SERVER + '/get_customers');
+                allCustomers = response.data;
+                console.log(allCustomers);
+                filterCustomers();
+            } catch (error) {
+                console.error('Error fetching customers:', error);
+            }
+        }
+
+        const selectBook = () => {
+            const bookSelect = document.getElementById('bookSelect');
+            const selectedBook = bookSelect.options[bookSelect.selectedIndex].text;
+            document.getElementById('BookID').value = bookSelect.value;
+            document.getElementById('selectedBook').value = selectedBook;
+        }
+
+        const selectCustomer = () => {
+            const customerSelect = document.getElementById('customerSelect');
+            const selectedCustomer = customerSelect.options[customerSelect.selectedIndex].text;
+            document.getElementById('CustID').value = customerSelect.value;
+            document.getElementById('selectedCustomer').value = selectedCustomer;
+        }
+
+        const closeModal = () => {
+            document.getElementById('updateModal').style.display = 'none';
+        }
+
+        // Fetch all loans, late loans, books, and customers on page load
+        window.onload = () => {
+            fetchLoans();
+            fetchLateLoans();
+            fetchAllBooks();
+            fetchAllCustomers();
+        }
+    </script>
+     <footer id="footer-placeholder"></footer>
+     <script src="load-components.js"></script>
+
+</body>
+
+</html>
